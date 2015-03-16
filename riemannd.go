@@ -36,5 +36,8 @@ func main() {
         log.Fatalln(err)
     }
 
+    for addr := range rConfig.Servers {
+        
+    }
     //TODO: finish dis..
 }
