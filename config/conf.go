@@ -10,13 +10,17 @@ import (
 
 type EventConfig struct {
     Cmd string
-    Interval float32
+    Interval float64
     //TODO: timeout
+}
+
+type ServerConfig struct {
+    Host []string
 }
 
 type RiemanndConfig struct {
     Include []string
-    Servers []string
+    Servers []ServerConfig
     Events []EventConfig
 }
 

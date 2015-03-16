@@ -26,18 +26,23 @@ func main() {
         log.Fatalln(err)
     }
 
-    fmt.Println(rConfig)
+    
 
-    eventChan := make(chan *rproto.Event, 100)
 
-    err = runner.RunEventOnce(eventChan, rConfig.Events[0])
+     := [len(rConfig.Servers)]chan *rproto.Event
 
-    if err != nil {
-        log.Fatalln(err)
+
+    for i, addr := range rConfig.Servers {
+        tmpChan := make(chan *rproto.Event, 100)
+        shipChans[i] = tmpChan
+        go shipper.ShipEventsTCP(addr, tmpChan)
     }
 
-    for addr := range rConfig.Servers {
-        
-    }
+    // The eventIn channel is what events are recieved on which is filled
+    // by the go routines. The eventDone channel is just closed when shutting
+    // down to wait for the go routines 
+    eventIn := make(chan *rproto.Event, 100)
+    eventDone := make(chan bool)
+
     //TODO: finish dis..
 }
