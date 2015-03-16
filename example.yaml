@@ -1,0 +1,12 @@
+---
+include: 
+    - "/a/conf/dir"
+
+servers:
+    - "server1"
+    - "server2"
+
+events:
+    - cmd: "./scripts/load.sh"
+      interval: 1
+
