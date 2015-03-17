@@ -3,17 +3,20 @@ package main
 import (
     "log"
 //    "github.com/golang/protobuf/proto"
-    "fmt"
-    "riemannd/runner"
+    "riemannd/event"
     "riemannd/config"
-    "riemannd/rproto"
+    "riemannd/client"
+    "os/signal"
+    "os"
+    "syscall"
 )
 
 
 
 func main() {
     
-    
+    sigs := make(chan os.Signal, 1)
+
     confPaths, err := config.GetConfigPaths()
 
     if err != nil {
@@ -26,23 +29,21 @@ func main() {
         log.Fatalln(err)
     }
 
-    
-
-
-     := [len(rConfig.Servers)]chan *rproto.Event
-
-
-    for i, addr := range rConfig.Servers {
-        tmpChan := make(chan *rproto.Event, 100)
-        shipChans[i] = tmpChan
-        go shipper.ShipEventsTCP(addr, tmpChan)
-    }
 
     // The eventIn channel is what events are recieved on which is filled
     // by the go routines. The eventDone channel is just closed when shutting
     // down to wait for the go routines 
-    eventIn := make(chan *rproto.Event, 100)
-    eventDone := make(chan bool)
 
-    //TODO: finish dis..
+    event.RunEvents(rConfig.Events)
+    client.RunClients(rConfig.Servers, event.EventChan)
+
+    signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+
+    log.Println("Running: waiting for kill signal")
+    for range sigs {
+        log.Println("Signal recieved")
+        event.StopEvents()
+        close(event.EventChan)
+        break
+    }
 }

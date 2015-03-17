@@ -15,7 +15,7 @@ type EventConfig struct {
 }
 
 type ServerConfig struct {
-    Host []string
+    Host string
 }
 
 type RiemanndConfig struct {
