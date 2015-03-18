@@ -13,7 +13,7 @@ import (
 
 var wg sync.WaitGroup
 
-var EventChan = make(chan *rproto.Event, 100)
+var EventChan = make(chan *rproto.Event, 10)
 
 var quitChan = make(chan bool)
 
@@ -57,7 +57,6 @@ func RunEventForever(conf config.EventConfig) {
                 
 
                 case <-ticker:
-                    log.Println("Tick")
                     out, err := exec.Command("sh", "-c", conf.Cmd).Output()
                     if err != nil {
                         //TODO: log error

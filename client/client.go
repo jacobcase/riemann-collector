@@ -6,6 +6,7 @@ import (
     "net"
     "log"
     "github.com/golang/protobuf/proto"
+    "encoding/binary"
 )
 
 var clientChans []chan *rproto.Event
@@ -14,7 +15,7 @@ var clientChans []chan *rproto.Event
 func RunClients(servers []config.ServerConfig, eventChan chan *rproto.Event) {
         
     for _, conf := range servers {
-        tmpChan := make(chan *rproto.Event, 200)
+        tmpChan := make(chan *rproto.Event, 10)
         clientChans = append(clientChans, tmpChan)
         go EventClientTCP(conf, tmpChan)        
     }
@@ -44,20 +45,73 @@ func RunClients(servers []config.ServerConfig, eventChan chan *rproto.Event) {
 
 
 func EventClientTCP(conf config.ServerConfig, events chan *rproto.Event) {
-    conn, _ := net.Dial("tcp", conf.Host)
-    
-    //TODO: handle error, keep trying
+    addr, _ := net.ResolveTCPAddr("tcp", conf.Host)
+    conn, _ := net.DialTCP("tcp", nil, addr)
+
+
+//    eventBuf := proto.NewBuffer(nil)
+
+    sizeBytes := make([]byte, 4, 4)
+
+//    msgBuf := proto.NewBuffer(nil)
+//    msgBytes := make([]byte, 256, 256)
+//    msgMsg := &rproto.Msg{}
+
+//    msgEvent := &rproto.Event{}
 
     for ev := range events {
-        log.Println("Event recieved")
+        log.Println("Event recieved: ", ev)
+
+//        err = eventBuf.Marshal(ev)
         data, err := proto.Marshal(ev)
         if err != nil {
-            log.Println(err)
-            continue
+            panic(err)
         }
-        _, err = conn.Write(data)
+
+//        binary.BigEndian.PutUint32(sizeBytes, uint32(len(eventBuf.Bytes())))
+        binary.BigEndian.PutUint32(sizeBytes, uint32(len(data)))
+        log.Println("Buffer size measured: ", len(data))
+
+//        _, err = conn.Write(sizeBytes)
+        log.Println("Buffer size: ", sizeBytes)
+
         if err != nil {
-            log.Println(err)
+            panic(err)
         }
+
+        sizeBytes = append(sizeBytes, data...)
+        _, err = conn.Write(sizeBytes)
+
+        if err != nil {
+            panic(err)
+        }
+
+        sizeBytes = sizeBytes[:4]
+
+//        proto.Unmarshal(data, msgEvent)
+
+//        log.Println("Event converted: ", msgEvent)
+
+//        eventBuf.Reset()
+//        sizeBytes := msgBytes[:4]
+//        conn.Read(sizeBytes)
+//        msgBuf.SetBuf(sizeBytes)
+//        msgSize, _ := msgBuf.DecodeFixed32()
+//        log.Println("Msg size recieved, size: ", msgSize)
+//
+//
+//        if msgSize > uint64(len(msgBytes)) {
+//            msgBytes = make([]byte, msgSize, msgSize)
+//        }
+//
+//        conn.Read(msgBytes[:msgSize])
+//        msgBuf.SetBuf(msgBytes[:msgSize])
+//
+//        msgBuf.Unmarshal(msgMsg)
+//
+//        log.Println(msgMsg)
+
+        
+
     }    
 }
