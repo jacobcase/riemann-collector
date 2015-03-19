@@ -27,7 +27,7 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	// The eventIn channel is what events are recieved on which is filled
+	// The eventIn channel is what events are received on which is filled
 	// by the go routines. The eventDone channel is just closed when shutting
 	// down to wait for the go routines
 
