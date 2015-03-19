@@ -18,8 +18,8 @@ type ServerConfig struct {
     Host string
 }
 
-type RiemanndConfig struct {
-    Include []string
+type CollectorConfig struct {
+//    Include []string
     Servers []ServerConfig
     Events []EventConfig
 }
@@ -45,10 +45,10 @@ func GetConfigPaths() ([]string, error) {
     return x, nil
 }
 
-func BuildRiemanndConfig(files []string) (*RiemanndConfig, error){
+func BuildCollectorConfig(files []string) (*CollectorConfig, error){
 
     //TODO: merge into master
-    masterConfig := new(RiemanndConfig)
+    masterConfig := new(CollectorConfig)
 
     for _, path := range files {
 

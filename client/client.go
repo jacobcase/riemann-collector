@@ -1,8 +1,8 @@
 package client
 
 import (
-    "riemannd/rproto"
-    "riemannd/config"
+    "riemann-collector/rproto"
+    "riemann-collector/config"
     "net"
     "log"
     "github.com/golang/protobuf/proto"

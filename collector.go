@@ -3,9 +3,9 @@ package main
 import (
     "log"
 //    "github.com/golang/protobuf/proto"
-    "riemannd/event"
-    "riemannd/config"
-    "riemannd/client"
+    "riemann-collector/event"
+    "riemann-collector/config"
+    "riemann-collector/client"
     "os/signal"
     "os"
     "syscall"
@@ -23,7 +23,7 @@ func main() {
         log.Fatalln(err)
     }
 
-    rConfig, err := config.BuildRiemanndConfig(confPaths)
+    rConfig, err := config.BuildCollectorConfig(confPaths)
 
     if err != nil {
         log.Fatalln(err)

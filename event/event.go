@@ -2,8 +2,8 @@
 package event
 
 import (
-    "riemannd/rproto"
-    "riemannd/config"
+    "riemann-collector/rproto"
+    "riemann-collector/config"
     "os/exec"
     "fmt"
     "time"
