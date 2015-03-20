@@ -3,10 +3,11 @@ package client
 import (
 	"encoding/binary"
 	"github.com/golang/protobuf/proto"
-	"log"
 	"net"
+        "github.com/Sirupsen/logrus"
 	"riemann-collector/config"
 	"riemann-collector/rproto"
+        "time"
 )
 
 var clientChans []chan *rproto.Event
@@ -42,30 +43,48 @@ func RunClients(servers []config.ServerConfig, eventChan chan *rproto.Event) {
 }
 
 func MsgClientTCP(conf config.ServerConfig, events chan *rproto.Event) {
-	addr, _ := net.ResolveTCPAddr("tcp", conf.Host)
-	conn, _ := net.DialTCP("tcp", nil, addr)
 
+        var conn *net.TCPConn
+
+        log := config.GetLogEntry("TCPClient")
+
+        addr, err := net.ResolveTCPAddr("tcp", conf.Host)
+        if err != nil {
+            log.WithFields(logrus.Fields{"error": err, "host": conf.Host}).Fatalln("A fatal error occured resolving host")
+        }
+
+        for {
+	    conn, err = net.DialTCP("tcp", nil, addr)
+            if err == nil {
+                break
+            }
+            log.WithFields(logrus.Fields{"error": err, "addr": addr}).Errorln("An error occured connecting to host, retrying in 1 second")
+            time.Sleep(time.Second)
+        }
+        
 	sizeBytes := make([]byte, 4, 4)
 
 	msg := &rproto.Msg{
 		Events: make([]*rproto.Event, 1, 1),
 	}
 
-	for ev := range events {
-		log.Println("Event recieved: ", ev)
+        buf := proto.NewBuffer(nil)
 
+	for ev := range events {
 		msg.Events[0] = ev
 
-		data, err := proto.Marshal(msg)
+                err := buf.Marshal(msg)
 		if err != nil {
-			panic(err)
+			log.WithFields(logrus.Fields{"error": err, "msg": msg}).Errorln("An error occured marshalling a message, skipping")
 		}
 
-		binary.BigEndian.PutUint32(sizeBytes, uint32(len(data)))
 
-		sizeBytes = append(sizeBytes, data...)
+		binary.BigEndian.PutUint32(sizeBytes, uint32(len(buf.Bytes())))
+
+		sizeBytes = append(sizeBytes, buf.Bytes()...)
 		_, err = conn.Write(sizeBytes)
 		if err != nil {
+                        //TODO: what do?
 			panic(err)
 		}
 

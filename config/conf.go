@@ -6,11 +6,14 @@ import (
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
+        "github.com/Sirupsen/logrus"
+        "path" 
 )
 
 type EventConfig struct {
-	Cmd      string
-	Interval float64
+	Cmd         string
+	Interval    float64
+        WorkingDir  string
 	//TODO: timeout
 }
 
@@ -19,36 +22,101 @@ type ServerConfig struct {
 }
 
 type CollectorConfig struct {
-	//    Include []string
+	Include []string
 	Servers []ServerConfig
 	Events  []EventConfig
 }
 
-func GetConfigPaths() ([]string, error) {
 
-	path := flag.String("c", "./", "Path to yaml config file or directory")
+func parseConfig(filePath string) (*CollectorConfig) {
+        
+        log := GetLogEntry("config")
+
+	stat, e := os.Stat(*filePath)
+
+        if os.IsNotExist(e) {
+		log.WithFields(logrus.Fields{"path": filePath}).Errorln("Path to config file doesn't exist")
+	}
+
+	data, err := ioutil.ReadFile(filePath)
+
+        if err != nil {
+            log.WithFields(logrus.Fields{"error": err, "path": filePath}).Errorln("An error occured reading the config file")
+        }
+
+        collectConfig := &CollectorConfig{}
+
+        err = yaml.Unmarshal(data, collectConfig)
+        if err != nil {
+            log.WithFields(logrus.Fields{"error": err, "path": filePath}).Errorln("An error occured parsing the config file")
+        }
+
+        return collectConfig
+
+}
+
+
+//scanned must be sorted
+func getConfigPaths(configPaths []string, workDir string, scanned map[string]CollectorConfig){
+    
+    fullPaths := make([]string, 0, 0)
+
+    for _, p := range configPaths {
+        if path.IsAbs(p) {
+            fullPaths = append(fullPaths, p)
+        } else {
+            fullPaths = append(fullPaths, path.Join(workDir, p))
+        }
+    }
+
+    fullFilePaths := make([]string, 0, 0)
+    for _, p := range fullPaths {
+    
+        info, err := os.Stat(p)
+        if err != nil {
+
+
+    }
+
+
+    for _, p := range fullPaths {
+
+    
+        if val, ok := scanned[p]; !ok{
+            scanned[p] = parseConfig(p)
+        } else {
+            continue
+        }
+        
+
+        
+    }
+}
+
+func BuildCollectorConfig() (*CollectorConfig) {
+
+        log := GetLogEntry("config")
+
+	mainPath := flag.String("c", nil, "Path to yaml config file or directory")
 
 	flag.Parse()
 
-	stat, e := os.Stat(*path)
-	if os.IsNotExist(e) {
-		return nil, errors.New("Path does not exist")
-	}
-
-	if stat.IsDir() {
-		//TODO: implement
-		return nil, errors.New("Config directories not supported yet")
-	}
-
-	//TODO: do what i said it does...
-	x := []string{*path}
-	return x, nil
-}
-
-func BuildCollectorConfig(files []string) (*CollectorConfig, error) {
+        if mainPath == nil {
+            log.Errorln("Path to configuration file not provided")
+            flag.Usage()
+            os.Exit(1)
+        }
 
 	//TODO: merge into master
-	masterConfig := new(CollectorConfig)
+	masterConfig := parseConfig(mainPath)
+
+        scanned := make([]string, 0, 10)
+
+        unscanned := make([]string, 0, 10)
+
+        //Since the input must be a file, and it would fail by now if it wasn't, start with
+        //the working directory being its dir
+        workDir := path.Dir(mainPath)
 
 	for _, path := range files {
 

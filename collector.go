@@ -15,11 +15,7 @@ func main() {
 
 	sigs := make(chan os.Signal, 1)
 
-	confPaths, err := config.GetConfigPaths()
-
-	if err != nil {
-		log.Fatalln(err)
-	}
+	confPaths := config.GetConfigPaths()
 
 	rConfig, err := config.BuildCollectorConfig(confPaths)
 
