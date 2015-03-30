@@ -1,0 +1,9 @@
+---
+include:
+    - /usr/local/etc/riemann-collector/conf.d
+
+servers:
+    - host: riemann-server
+
+
+

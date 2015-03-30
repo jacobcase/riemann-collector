@@ -1,0 +1,12 @@
+---
+events:
+    - cmd: "/usr/local/etc/riemann-collector/scripts/cpu/load1.sh"
+      interval: 1
+
+events:
+    - cmd: "/usr/local/etc/riemann-collector/scripts/cpu/load5.sh"
+      interval: 1
+
+events:
+    - cmd: "/usr/local/etc/riemann-collector/scripts/cpu/load15.sh"
+      interval: 1

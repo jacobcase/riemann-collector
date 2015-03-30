@@ -1,0 +1,6 @@
+---
+events:
+    - cmd: "/usr/local/etc/riemann-collector/scripts/memory/free_percent.sh"
+      interval: 1
+
+
