@@ -1,19 +1,18 @@
 package config
 
 import (
-	"errors"
 	"flag"
+	"github.com/Sirupsen/logrus"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"os"
-        "github.com/Sirupsen/logrus"
-        "path" 
+	"path"
 )
 
 type EventConfig struct {
-	Cmd         string
-	Interval    float64
-        WorkingDir  string
+	Cmd        string
+	Interval   float64
+	WorkingDir string
 	//TODO: timeout
 }
 
@@ -27,112 +26,95 @@ type CollectorConfig struct {
 	Events  []EventConfig
 }
 
+func parsePath(confPath string, order *[]string, loaded map[string]*CollectorConfig) {
 
-func parseConfig(filePath string) (*CollectorConfig) {
-        
-        log := GetLogEntry("config")
+	log := GetLogEntry("config").WithFields(logrus.Fields{"path": confPath})
 
-	stat, e := os.Stat(*filePath)
+	log.Debugln("Parsing Path")
 
-        if os.IsNotExist(e) {
-		log.WithFields(logrus.Fields{"path": filePath}).Errorln("Path to config file doesn't exist")
+	if !path.IsAbs(confPath) {
+		log.Fatalln("Relative directories are not supported")
 	}
 
-	data, err := ioutil.ReadFile(filePath)
+	stat, err := os.Stat(confPath)
 
-        if err != nil {
-            log.WithFields(logrus.Fields{"error": err, "path": filePath}).Errorln("An error occured reading the config file")
-        }
+	if os.IsNotExist(err) {
+		log.Fatalln("Path to config file doesn't exist")
+	}
 
-        collectConfig := &CollectorConfig{}
+	if stat.IsDir() {
+		dirPaths, _ := ioutil.ReadDir(confPath)
+		for _, p := range dirPaths {
+			parsePath(p.Name(), order, loaded)
+		}
+		return
+	}
 
-        err = yaml.Unmarshal(data, collectConfig)
-        if err != nil {
-            log.WithFields(logrus.Fields{"error": err, "path": filePath}).Errorln("An error occured parsing the config file")
-        }
+	if !stat.Mode().IsRegular() {
+		log.Fatalln("Attempted to open irregular file")
+	}
 
-        return collectConfig
+	if _, ok := loaded[confPath]; !ok {
+		log.Warningln("Attempted to open an already opened file, could be circular dependencies. Ignoring")
+		return
+	}
+
+	data, err := ioutil.ReadFile(confPath)
+
+	if err != nil {
+		log.WithFields(logrus.Fields{"error": err}).Fatalln("An error occured opening the config file")
+	}
+
+	collectConfig := &CollectorConfig{}
+
+	err = yaml.Unmarshal(data, collectConfig)
+
+	if err != nil {
+		log.WithFields(logrus.Fields{"error": err}).Fatalln("An error occured parsing the config file")
+	}
+
+	*order = append(*order, confPath)
+
+	loaded[confPath] = collectConfig
+
+	for _, p := range collectConfig.Include {
+		parsePath(p, order, loaded)
+	}
+}
+
+func merge(master *CollectorConfig, toMerge *CollectorConfig) {
+	master.Servers = append(master.Servers, toMerge.Servers...)
+	master.Events = append(master.Events, toMerge.Events...)
 
 }
 
+func BuildCollectorConfig() *CollectorConfig {
 
-//scanned must be sorted
-func getConfigPaths(configPaths []string, workDir string, scanned map[string]CollectorConfig){
-    
-    fullPaths := make([]string, 0, 0)
+	log := GetLogEntry("config")
 
-    for _, p := range configPaths {
-        if path.IsAbs(p) {
-            fullPaths = append(fullPaths, p)
-        } else {
-            fullPaths = append(fullPaths, path.Join(workDir, p))
-        }
-    }
-
-    fullFilePaths := make([]string, 0, 0)
-    for _, p := range fullPaths {
-    
-        info, err := os.Stat(p)
-        if err != nil {
-
-
-    }
-
-
-    for _, p := range fullPaths {
-
-    
-        if val, ok := scanned[p]; !ok{
-            scanned[p] = parseConfig(p)
-        } else {
-            continue
-        }
-        
-
-        
-    }
-}
-
-func BuildCollectorConfig() (*CollectorConfig) {
-
-        log := GetLogEntry("config")
-
-	mainPath := flag.String("c", nil, "Path to yaml config file or directory")
+	mainPath := flag.String("c", "", "Path to yaml config file or directory")
 
 	flag.Parse()
 
-        if mainPath == nil {
-            log.Errorln("Path to configuration file not provided")
-            flag.Usage()
-            os.Exit(1)
-        }
-
-	//TODO: merge into master
-	masterConfig := parseConfig(mainPath)
-
-        scanned := make([]string, 0, 10)
-
-        unscanned := make([]string, 0, 10)
-
-        //Since the input must be a file, and it would fail by now if it wasn't, start with
-        //the working directory being its dir
-        workDir := path.Dir(mainPath)
-
-	for _, path := range files {
-
-		data, err := ioutil.ReadFile(path)
-		if err != nil {
-			//TODO: or skip? meh, config option later
-			return nil, err
-		}
-
-		err = yaml.Unmarshal(data, masterConfig)
-		if err != nil {
-			//TODO: error or skip
-			return nil, err
-		}
+	if len(*mainPath) == 0 {
+		log.Errorln("Path to configuration file not provided")
+		flag.Usage()
+		os.Exit(1)
 	}
 
-	return masterConfig, nil
+	loadOrder := make([]string, 10)
+	loadedConfigs := make(map[string]*CollectorConfig)
+
+	parsePath(*mainPath, &loadOrder, loadedConfigs)
+
+	masterConfig := &CollectorConfig{}
+
+	for _, p := range loadOrder {
+
+		merge(masterConfig, loadedConfigs[p])
+
+	}
+
+	return masterConfig
 
 }

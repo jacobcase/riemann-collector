@@ -15,13 +15,7 @@ func main() {
 
 	sigs := make(chan os.Signal, 1)
 
-	confPaths := config.GetConfigPaths()
-
-	rConfig, err := config.BuildCollectorConfig(confPaths)
-
-	if err != nil {
-		log.Fatalln(err)
-	}
+	rConfig := config.BuildCollectorConfig()
 
 	// The eventIn channel is what events are received on which is filled
 	// by the go routines. The eventDone channel is just closed when shutting
